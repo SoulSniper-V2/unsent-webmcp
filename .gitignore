@@ -1,0 +1,13 @@
+node_modules/
+.next/
+out/
+.vercel/
+coverage/
+*.log
+.DS_Store
+work/
+*.tsbuildinfo
+
+# X headless credentials are never part of this repository.
+cookies.json
+resources/cookies.json
