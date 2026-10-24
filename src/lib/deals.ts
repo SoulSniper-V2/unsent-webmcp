@@ -158,7 +158,6 @@ export const inboxThreads: InboxThread[] = [
     expectedRoute: "escalate",
     requiredFacts: ["security", "founder"],
     prohibitedPhrases: ["certified", "compliant", "attached"],
-    injectionTrap: true,
     evidence: [
       { label: "Account health", value: "At risk, procurement deadline Friday", source: "Customer record" },
       { label: "Policy", value: "Security and privacy claims require founder review", source: "Trust policy" },

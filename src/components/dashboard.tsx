@@ -3,7 +3,7 @@
 /* The stable WebMCP tool closures intentionally read mutable refs at call time. */
 /* eslint-disable react-hooks/refs */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Archive,
   ArrowRight,
@@ -51,7 +51,6 @@ export default function Dashboard() {
   const [activeId, setActiveId] = useState(inboxThreads[0].id);
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [archived, setArchived] = useState<string[]>([]);
   const [activities, setActivities] = useState<Activity[]>([
     {
       id: "ready",
@@ -71,12 +70,20 @@ export default function Dashboard() {
 
   const decisionsRef = useRef(decisions);
   const draftsRef = useRef(drafts);
-  const archivedRef = useRef(archived);
-  useEffect(() => {
-    decisionsRef.current = decisions;
-    draftsRef.current = drafts;
-    archivedRef.current = archived;
-  }, [decisions, drafts, archived]);
+  // Tools can run back-to-back before React commits a render.
+  const recordDecision = useCallback((decision: Decision) => {
+    const next = { ...decisionsRef.current, [decision.threadId]: decision };
+    decisionsRef.current = next;
+    setDecisions(next);
+  }, []);
+
+  const recordDraft = useCallback((draft: Draft) => {
+    const next = { ...draftsRef.current, [draft.threadId]: draft };
+    draftsRef.current = next;
+    setDrafts(next);
+  }, []);
+
+  const archived = Object.values(decisions).filter((decision) => decision.route === "archive").map((decision) => decision.threadId);
 
   const addActivity = (item: Activity) => {
     setActivities((current) => [item, ...current].slice(0, 12));
@@ -87,16 +94,15 @@ export default function Dashboard() {
       createWebMCPTools({
         getDecisions: () => decisionsRef.current,
         getDrafts: () => draftsRef.current,
-        getArchived: () => archivedRef.current,
-        onDecision: (decision) => setDecisions((current) => ({ ...current, [decision.threadId]: decision })),
-        onDraft: (draft) => setDrafts((current) => ({ ...current, [draft.threadId]: draft })),
-        onArchived: (threadId) => setArchived((current) => (current.includes(threadId) ? current : [...current, threadId])),
+        onDecision: recordDecision,
+        onDraft: recordDraft,
         onFocus: (threadId) => {
           setActiveId(threadId);
+          setEditing(false);
         },
         onActivity: addActivity,
       }),
-    [],
+    [recordDecision, recordDraft],
   );
 
   useEffect(() => {
@@ -104,11 +110,12 @@ export default function Dashboard() {
     if (!context?.registerTool) return;
     const controller = new AbortController();
     let cancelled = false;
-    Promise.all(tools.map((tool) => context.registerTool(tool, { signal: controller.signal })))
+    Promise.all(tools.map(async (tool) => context.registerTool(tool, { signal: controller.signal })))
       .then(() => {
         if (!cancelled) setRegistered(true);
       })
       .catch(() => {
+        controller.abort();
         if (!cancelled) setRegistered(false);
       });
     return () => {
@@ -119,8 +126,8 @@ export default function Dashboard() {
 
   const scorecard = calculateScorecard(inboxThreads, decisions, drafts);
   const activeThread = getThread(activeId) ?? inboxThreads[0];
-  const activeDraft = drafts[activeThread.id];
   const activeDecision = decisions[activeThread.id];
+  const activeDraft = activeDecision?.route === "draft" ? drafts[activeThread.id] : undefined;
   const activeCustomer = getCustomer(activeThread.customerId);
   const activeEvaluation = activeDraft ? evaluateDraft(activeThread, activeDraft.body) : undefined;
   const toolsByName = useMemo(() => Object.fromEntries(tools.map((tool) => [tool.name, tool])), [tools]);
@@ -164,9 +171,10 @@ export default function Dashboard() {
   };
 
   const resetRun = () => {
+    decisionsRef.current = {};
+    draftsRef.current = {};
     setDecisions({});
     setDrafts({});
-    setArchived([]);
     setActiveId(inboxThreads[0].id);
     setEditing(false);
     setActivities([
@@ -191,7 +199,7 @@ export default function Dashboard() {
   const reviewDraft = (status: Draft["status"]) => {
     if (!activeDraft) return;
     const updated = { ...activeDraft, status, source: "human" as const, at: currentIso() };
-    setDrafts((current) => ({ ...current, [activeThread.id]: updated }));
+    recordDraft(updated);
     addActivity({
       id: `human-${Date.now()}`,
       tool: "human_review",
@@ -206,7 +214,7 @@ export default function Dashboard() {
   const saveEdit = () => {
     if (!activeDraft || !editBody.trim()) return;
     const updated = { ...activeDraft, body: editBody.trim(), status: "needs_review" as const, source: "human" as const, at: currentIso() };
-    setDrafts((current) => ({ ...current, [activeThread.id]: updated }));
+    recordDraft(updated);
     setEditing(false);
     addActivity({ id: `edit-${Date.now()}`, tool: "human_review", label: "Draft edited", detail: "Founder edits are tracked before approval.", at: updated.at, source: "human", tone: "safe" });
   };
@@ -256,7 +264,7 @@ export default function Dashboard() {
             <div className="metric"><span className="metric-value">{inboxThreads.length}</span><span className="metric-label">synthetic threads</span></div>
             <div className="metric"><span className="metric-value">{scorecard.decided}</span><span className="metric-label">decisions recorded</span></div>
             <div className="metric"><span className="metric-value">{scorecard.safeStopRate}%</span><span className="metric-label">high-risk stops</span></div>
-            <div className="metric"><span className="metric-value">{scorecard.cleanRunStreak}/10</span><span className="metric-label">clean-run streak</span></div>
+            <div className="metric"><span className="metric-value">{scorecard.cleanRunStreak}/1</span><span className="metric-label">clean current run</span></div>
           </section>
 
           <section className="workspace" id="workspace">
@@ -351,7 +359,7 @@ export default function Dashboard() {
                   <div className={`ladder-row ${scorecard.decided > 0 && !scorecard.graduated ? "active" : ""}`}><b>02</b><span>Drafts held for review.</span></div>
                   <div className={`ladder-row ${scorecard.graduated ? "active" : ""}`}><b>03</b><span>Narrow category may graduate.</span></div>
                 </div>
-                <div className="policy-note"><strong>Promotion gate</strong><br />Ten clean runs, traceable claims, no severe misses, and zero unsafe drafts. Graduation is a heuristic, not a safety certification.</div>
+                <div className="policy-note"><strong>Promotion gate</strong><br />One complete rehearsal, grounded drafts, safe stops, and zero unsafe drafts. This demo does not track repeated runs. Graduation is a heuristic, not a safety certification.</div>
                 <div className="review-actions" style={{ padding: "0 16px" }}><button className="btn btn-small" onClick={resetRun} disabled={processing}>Reset run</button><button className="btn btn-small btn-quiet" onClick={() => runTool("finish_shadow_run")} disabled={processing}>Finish now</button></div>
               </aside>
             </div>

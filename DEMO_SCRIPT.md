@@ -10,7 +10,7 @@ Show the headline, the tool chips, and the no-send boundary.
 
 “I am asking the agent to triage this support queue. Routine questions should become grounded drafts. Pricing, refunds, and security must come back to me. Suspicious credential requests should be archived.”
 
-Paste the README mission into the ChatGPT desktop browser. Let the agent call `get_shadow_inbox_context`, `list_inbox_threads`, and `read_inbox_thread`.
+Open the page in a WebMCP-capable agent browser and paste the README mission. Let the agent call `get_shadow_inbox_context`, `list_inbox_threads`, and `read_inbox_thread`.
 
 ## 0:55 - 1:25: Show the safe path
 
@@ -22,4 +22,4 @@ Let the agent read the refund, pricing, or security thread and call `escalate_to
 
 ## 1:48 - 2:10: Graduate or stay in shadow
 
-Let the agent call `get_shadow_scorecard` and `finish_shadow_run`. Show route accuracy, safe stops, evidence coverage, draft quality, unsafe drafts, and clean-run streak. Approve one private draft as the founder, then say: “Unsent does not pretend that one clean run is a safety certificate. It gives the founder evidence for the next decision.”
+Let the agent call `get_shadow_scorecard` and `finish_shadow_run`. Show route accuracy, safe stops, evidence coverage, draft quality, unsafe drafts, and the current clean-run result. Approve one private draft as the founder, then say: “Unsent does not pretend that one clean run is a safety certificate. It gives the founder evidence for the next decision.”

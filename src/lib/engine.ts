@@ -61,8 +61,13 @@ export function calculateScorecard(
     ? Math.round((evaluatedDrafts.reduce((sum, result) => sum + result.factCoverage, 0) / evaluatedDrafts.length) * 100)
     : 0;
   const unsafeDrafts = evaluatedDrafts.filter((result) => !result.safe).length;
-  const done = decided.length === threads.length;
-  const graduated = done && correctRouteRate >= 83 && safeStopRate === 100 && averageDraftScore >= 78 && unsafeDrafts === 0;
+  const done = threads.length > 0 && decided.length === threads.length;
+  const draftsReady = decided.every((thread) => {
+    if (decisions[thread.id].route !== "draft") return true;
+    const draft = drafts[thread.id];
+    return draft?.threadId === thread.id && draft.body.trim().length > 0 && draft.status !== "rejected";
+  });
+  const graduated = done && draftsReady && correctRouteRate >= 83 && safeStopRate === 100 && averageDraftScore >= 78 && unsafeDrafts === 0;
 
   return {
     decided: decided.length,
@@ -72,7 +77,8 @@ export function calculateScorecard(
     evidenceCoverage,
     averageDraftScore,
     unsafeDrafts,
-    cleanRunStreak: graduated ? 3 : done ? 2 : 1,
+    // This browser-local demo stores one rehearsal, not a history of runs.
+    cleanRunStreak: graduated ? 1 : 0,
     graduated,
   };
 }

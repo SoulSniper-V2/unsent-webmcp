@@ -14,17 +14,17 @@ Unsent does not make an agent click a pretend Send button. It gives the agent a 
 
 Before Unsent, a founder had to connect an early agent to a real mailbox or construct a one-off test harness. That makes it hard to observe mistakes safely and hard to tell whether the agent is ready for one narrow category.
 
-With Unsent, the agent can triage realistic support threads, retrieve trusted customer facts, draft grounded replies, flag sensitive decisions, and finish a measurable rehearsal. The founder can inspect the exact same page, edit or approve a private draft, review the evidence trail, and decide whether the agent should remain in shadow mode. The agent earns autonomy through repeated clean behavior, not through a single successful demo.
+With Unsent, the agent can triage realistic support threads, retrieve trusted customer facts, draft grounded replies, flag sensitive decisions, and finish a measurable rehearsal. The founder can inspect the exact same page, edit or approve a private draft, review the evidence trail, and decide whether the agent should remain in shadow mode. Repeated clean behavior would be needed before real autonomy; this demo scores only the current rehearsal.
 
 ## How it is implemented
 
 The app is a Next.js client page with deterministic local state and a synthetic six-thread support dataset. The domain logic lives in `src/lib/engine.ts` and `src/lib/deals.ts`. `src/lib/webmcp.ts` defines the tool schemas, side-effect descriptions, annotations, and handlers. `src/components/dashboard.tsx` registers them on the top-level document when `document.modelContext.registerTool` exists, and exposes a guided reference mission for browsers without WebMCP.
 
-The scorecard measures route accuracy, high-risk stops, trusted-evidence coverage, draft quality, unsafe phrases, and clean-run streak. The human review controls never send a message. The app uses no external API keys and stores no server-side customer data.
+The scorecard measures route accuracy, high-risk stops, trusted-evidence coverage, draft quality, unsafe phrases, and whether the current rehearsal is clean. The human review controls never send a message. The app uses no external API keys and stores no server-side customer data.
 
 ## Testing instructions
 
-1. Open the live URL in ChatGPT's built-in browser or Chrome 149+ with WebMCP enabled.
+1. Run the app locally as described in the README and open it in a WebMCP-capable agent browser or Chrome 149+ with WebMCP enabled.
 2. Ask the agent to follow the mission prompt in the README.
 3. Confirm that it reads policy, lists threads, reads multiple threads, drafts the routine questions, escalates pricing/refund/security, archives the suspicious credential request, and finishes with the scorecard.
 4. Click a private draft. Approve, edit, or reject it. The activity log should show a founder review and still show zero external messages.
