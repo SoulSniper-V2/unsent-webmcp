@@ -22,7 +22,7 @@ describe("Unsent shadow scoring", () => {
     const scorecard = calculateScorecard(inboxThreads, {}, {});
     expect(scorecard.decided).toBe(0);
     expect(scorecard.graduated).toBe(false);
-    expect(scorecard.cleanRunStreak).toBe(1);
+    expect(scorecard.cleanRunStreak).toBe(0);
   });
 
   it("graduates a complete, safe reference run", () => {
@@ -39,5 +39,10 @@ describe("Unsent shadow scoring", () => {
     expect(scorecard.safeStopRate).toBe(100);
     expect(scorecard.unsafeDrafts).toBe(0);
     expect(scorecard.graduated).toBe(true);
+    expect(scorecard.cleanRunStreak).toBe(1);
+
+    expect(calculateScorecard(inboxThreads, decisions, { "thr-01": drafts["thr-01"] }).graduated).toBe(false);
+    drafts["thr-05"] = { ...drafts["thr-05"], status: "rejected" };
+    expect(calculateScorecard(inboxThreads, decisions, drafts).graduated).toBe(false);
   });
 });
